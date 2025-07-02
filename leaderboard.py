@@ -1,22 +1,49 @@
 import tkinter as tk
-from db import get_top_scores
+from tkinter import ttk
+import pyodbc
 
-def open_leaderboard():
-    lb = tk.Tk()
-    lb.title("Leaderboard")
-    lb.geometry("500x400")
-    lb.configure(bg="#dceeff")
+# Update with your SQL Server connection details
+conn = pyodbc.connect(
+    'Driver={SQL Server};'
+    'Server=DESKTOP-USJNA54;'
+    'Database=QuizGameDB;'
+    'Trusted_Connection=yes;'
+)
 
-    tk.Label(lb, text="🏆 Leaderboard", font=("Arial", 18, "bold"), bg="#dceeff").pack(pady=10)
+def show_leaderboard():
+    leaderboard_window = tk.Tk()
+    leaderboard_window.title("Leaderboard")
+    leaderboard_window.geometry("500x400")
 
-    headers = ["Username", "Score", "Date"]
-    for i, h in enumerate(headers):
-        tk.Label(lb, text=h, font=("Arial", 12, "bold"), bg="#dceeff", fg="black", width=15).grid(row=1, column=i, padx=5)
+    title = tk.Label(leaderboard_window, text="Quiz Leaderboard", font=("Arial", 16))
+    title.pack(pady=10)
 
-    scores = get_top_scores()
-    for i, row in enumerate(scores, start=2):
-        for j, val in enumerate(row):
-            tk.Label(lb, text=str(val), font=("Arial", 12), bg="#dceeff").grid(row=i, column=j, padx=5)
+    columns = ("Username", "Score")
+    tree = ttk.Treeview(leaderboard_window, columns=columns, show='headings')
+    tree.heading("Username", text="Username")
+    tree.heading("Score", text="Score")
 
-    tk.Button(lb, text="Close", command=lb.destroy,
-              bg="gray", fg="white", font=("Arial", 12)).pack(pady=20)
+    tree.pack(pady=10, fill="both", expand=True)
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT Username, Score FROM Scores ORDER BY Score DESC")
+        rows = cursor.fetchall()
+
+        if rows:
+            for row in rows:
+                tree.insert("", tk.END, values=(row.Username, row.Score))
+        else:
+            tree.insert("", tk.END, values=("No Data Found", "-"))
+
+    except Exception as e:
+        print("Error fetching leaderboard:", e)
+        tree.insert("", tk.END, values=("Error fetching data", "-"))
+
+    close_btn = tk.Button(leaderboard_window, text="Close", command=leaderboard_window.destroy)
+    close_btn.pack(pady=10)
+
+    leaderboard_window.mainloop()
+
+if __name__ == "__main__":
+    show_leaderboard()
